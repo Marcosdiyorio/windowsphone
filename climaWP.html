@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel WP</title>
+    <style>
+       body {
+    margin: 0;
+    padding: 5px;
+    padding-top: 0;
+    /*font-family: Arial, sans-serif;*/
+    font-family: 'Inter', sans-serif;
+    background: black;
+    color: white;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0px;
+    align-items: center;
+}
+
+.time {
+    font-size: 90px; /* Más grande */
+    font-weight: Normal;
+}
+
+.date {
+    text-align: right;
+    font-size: 30px; /* Más grande */
+    opacity: 0.6;
+    text-transform: uppercase;
+}
+
+.weather {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-top: 0;
+    margin-bottom: 0px;
+}
+
+.current {
+    display: flex;
+    align-items: flex-start; /* Cambia a flex-start para alinear hacia arriba */
+    text-align: center;
+    margin-top: -20px; /* Ajusta este valor según sea necesario */
+    margin-left: 10px; /* Agregado para espacio a la izquierda */
+}
+
+
+.current-temp {
+    font-size: 70px; /* Muy grande */
+    font-weight: bold;
+    margin-right: -5px; /* Espaciado entre temperatura e ícono */
+    opacity: 0.8;
+}
+
+.current img {
+    width: 110px; /* Ícono grande */
+    height: 110px;
+}
+
+.forecast {
+    display: flex;
+    justify-content: flex-end; /* Alineado a la derecha */
+    flex-grow: 1;
+}
+
+.forecast-item {
+    text-align: center;
+    margin: 0px;
+    font-size: 24px; /* Más chico */
+}
+
+.forecast-item img {
+    width: 60px; /* Íconos más pequeños */
+    height: 60px;
+}
+
+.btc {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    font-size: 20px;
+    font-weight: normal;
+    opacity: 0.8;
+    color: #cfc;
+}
+
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="time" id="time">--:--</div>
+        <div class="date" id="date">--- --</div>
+    </div>
+
+    <div class="weather">
+        <div class="current">
+            <div class="current-temp" id="currentTemp">-°</div>
+            <img id="currentIcon" src="" alt="Ícono del clima">
+        </div>
+        <div class="forecast" id="forecast"></div>
+    </div>
+
+    <div class="btc" id="btc">BTC: -.--</div>
+
+    <script>
+        function updateTime() {
+            var now = new Date();
+            var time = now.getHours() + ':' + ('0' + now.getMinutes()).slice(-2);
+            
+            // Formato de fecha sin año
+            var options = { month: 'long', day: 'numeric', weekday: 'long'};
+            var date = now.toLocaleDateString('es-AR', options);
+            
+            document.getElementById('time').innerText = time;
+            document.getElementById('date').innerText = date; // Muestra la fecha completa sin año
+        }
+
+        function getWeather() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', 'http://api.openweathermap.org/data/2.5/forecast?q=Buenos%20Aires&appid=TUAPIKEY&units=metric&lang=es');
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    var data = JSON.parse(xhr.responseText);
+                    updateWeather(data);
+                }
+            };
+            xhr.send();
+        }
+
+        function updateWeather(data) {
+            // Temperatura actual
+            var current = data.list[0];
+            document.getElementById('currentTemp').innerText = Math.round(current.main.temp) + '°';
+            document.getElementById('currentIcon').src = 'http://openweathermap.org/img/w/' + current.weather[0].icon + '.png';
+
+            // Pronóstico extendido
+            var forecastHtml = '';
+            
+            for (var i = 1; i <= 4; i++) { // Próximos 4 días
+                var day = data.list[i * 8]; // Cada día tiene un registro cada 3 horas
+                
+                // Crear una fecha válida
+                var dtParts = day.dt_txt.split(" ");
+                var dateParts = dtParts[0].split("-");
+                var timeParts = dtParts[1].split(":");
+                
+                // Crear un objeto Date con partes
+                var forecastDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], timeParts[0], timeParts[1]);
+
+                // Obtener el nombre del día de la semana
+                var dayName = forecastDate.toLocaleDateString('es-AR', { weekday: 'short' });
+                
+                forecastHtml += '<div class="forecast-item">' +
+                    '<div>' + dayName.charAt(0).toUpperCase() + dayName.slice(1) + '</div>' + // Capitalizar el primer carácter
+                    '<img src="http://openweathermap.org/img/w/' + day.weather[0].icon + '.png">' +
+                    '<div>' + Math.round(day.main.temp_max) + '°</div>' + // Solo temperatura máxima
+                '</div>';
+            }
+            
+            document.getElementById('forecast').innerHTML = forecastHtml;
+        }
+
+        function getBitcoin() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', 'https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT');
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    var data = JSON.parse(xhr.responseText);
+                    document.getElementById('btc').innerText = 'BTC: $ ' + parseFloat(data.price).toFixed(2).replace('.', ',');
+                }
+            };
+            xhr.send();
+        }
+
+        updateTime();
+        getWeather();
+        getBitcoin();
+        
+        setInterval(updateTime, 1000);
+        setInterval(getWeather, 600000); // cada 5 minutos
+        setInterval(getBitcoin, 60000); // cada minuto
+    </script>
+</body>
+</html>
